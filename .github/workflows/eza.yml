@@ -22,26 +22,16 @@ jobs:
           git checkout $LATEST_TAG
           echo "EZA_VERSION=${LATEST_TAG#v}" >> $GITHUB_ENV
 
-      - name: Install Rust
+      - name: Install Rust and cross
         run: |
           curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
           echo "$HOME/.cargo/bin" >> $GITHUB_PATH
+          cargo install cross
 
-      - name: Add musl target
-        run: rustup target add aarch64-unknown-linux-musl
-
-      - name: Install Zig
-        uses: mlugg/setup-zig@v2
-        with:
-          version: 0.13.0
-
-      - name: Install cargo-zigbuild
-        run: cargo install cargo-zigbuild
-
-      - name: Build eza statically for aarch64
+      - name: Build eza statically for aarch64 using cross
         run: |
           cd eza
-          cargo zigbuild --target aarch64-unknown-linux-musl --release --features vendored-openssl,git
+          cross build --target aarch64-unknown-linux-musl --release --features vendored-openssl,git
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
