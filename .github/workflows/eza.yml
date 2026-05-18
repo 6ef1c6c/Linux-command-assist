@@ -27,12 +27,13 @@ jobs:
           curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
           echo "$HOME/.cargo/bin" >> $GITHUB_PATH
 
-      - name: Install zig and cargo-zigbuild
-        run: |
-          cargo install cargo-zigbuild
-          wget https://ziglang.org/builds/zig-linux-x86_64-0.13.0.tar.xz
-          tar -xf zig-linux-x86_64-0.13.0.tar.xz
-          echo "$(pwd)/zig-linux-x86_64-0.13.0" >> $GITHUB_PATH
+      - name: Install Zig
+        uses: mlugg/setup-zig@v2
+        with:
+          version: 0.13.0
+
+      - name: Install cargo-zigbuild
+        run: cargo install cargo-zigbuild
 
       - name: Build eza statically for aarch64
         run: |
