@@ -1,0 +1,47 @@
+name: Build eza (ARM64 Static)
+
+on:
+  workflow_dispatch:                   # 手动触发
+  schedule:
+    - cron: '0 0 * * 0'                # 每周自动检测一次
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  build:
+    name: Build for aarch64
+    runs-on: ubuntu-24.04-arm64        # 使用原生的 ARM64 运行器
+
+    steps:
+      - name: 📥 Checkout code
+        uses: actions/checkout@v4
+
+      - name: 🔍 获取最新版本号
+        id: get_version
+        run: |
+          LATEST=$(curl -s https://api.github.com/repos/eza-community/eza/releases/latest | jq -r .tag_name)
+          echo "version=${LATEST#v}" >> $GITHUB_OUTPUT
+
+      - name: 🦀 设置 Rust 工具链
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+          target: aarch64-unknown-linux-musl
+          override: true
+
+      - name: 🔨 编译静态 eza
+        run: |
+          cargo install eza \
+            --version ${{ steps.get_version.outputs.version }} \
+            --target aarch64-unknown-linux-musl \
+            --features vendored-openssl,git
+
+      - name: 📦 上传产物
+        uses: actions/upload-artifact@v4
+        with:
+          name: eza-aarch64-static
+          path: |
+            ~/.cargo/bin/eza
+            !~/.cargo/bin/*.d
