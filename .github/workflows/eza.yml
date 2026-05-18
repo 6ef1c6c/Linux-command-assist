@@ -9,36 +9,38 @@ on:
 
 jobs:
   build:
-    name: Build for aarch64 (cross)
     runs-on: ubuntu-24.04
-
     steps:
-      - name: 📥 Checkout
+      - name: Checkout
         uses: actions/checkout@v4
 
-      - name: 🔍 获取最新版本号
-        id: get_version
+      - name: Clone eza and get latest tag
         run: |
-          LATEST=$(curl -s https://api.github.com/repos/eza-community/eza/releases/latest | jq -r .tag_name)
-          echo "version=${LATEST#v}" >> $GITHUB_OUTPUT
+          git clone https://github.com/eza-community/eza.git
+          cd eza
+          LATEST_TAG=$(curl -s https://api.github.com/repos/eza-community/eza/releases/latest | jq -r .tag_name)
+          git checkout $LATEST_TAG
+          echo "EZA_VERSION=${LATEST_TAG#v}" >> $GITHUB_ENV
 
-      - name: 🦀 安装 Rust 工具链
-        uses: actions-rs/toolchain@v1
-        with:
-          toolchain: stable
-          target: aarch64-unknown-linux-musl
-          override: true
-
-      - name: 🔨 交叉编译静态 eza
+      - name: Install Rust
         run: |
-          cargo install eza \
-            --version ${{ steps.get_version.outputs.version }} \
-            --target aarch64-unknown-linux-musl \
-            --features vendored-openssl,git \
-            --root ./eza-install
+          curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
+          echo "$HOME/.cargo/bin" >> $GITHUB_PATH
 
-      - name: 📦 上传产物
+      - name: Install zig and cargo-zigbuild
+        run: |
+          cargo install cargo-zigbuild
+          wget https://ziglang.org/builds/zig-linux-x86_64-0.13.0.tar.xz
+          tar -xf zig-linux-x86_64-0.13.0.tar.xz
+          echo "$(pwd)/zig-linux-x86_64-0.13.0" >> $GITHUB_PATH
+
+      - name: Build eza statically for aarch64
+        run: |
+          cd eza
+          cargo zigbuild --target aarch64-unknown-linux-musl --release --features vendored-openssl,git
+
+      - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
           name: eza-aarch64-static
-          path: ./eza-install/bin/eza
+          path: eza/target/aarch64-unknown-linux-musl/release/eza
