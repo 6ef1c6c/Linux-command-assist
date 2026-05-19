@@ -1,7 +1,7 @@
 name: Build mkdtimg (Full Static, No ACPI, Clang/LLD)
 
 on:
-  workflow_dispatch:          # 只允许手动触发
+  workflow_dispatch:
 
 jobs:
   build:
@@ -10,7 +10,7 @@ jobs:
       - name: Install build dependencies
         run: |
           sudo apt update
-          sudo apt install -y git clang lld libz-dev zlib1g-static
+          sudo apt install -y git clang lld zlib1g-dev
 
       - name: Clone official libufdt
         run: |
