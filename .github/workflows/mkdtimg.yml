@@ -1,4 +1,4 @@
-name: Build mkdtimg (Full Static, No ACPI, Clang/LLD)
+name: Build mkdtimg (Full Static, No ACPI, with libfdt)
 
 on:
   workflow_dispatch:
@@ -7,17 +7,28 @@ jobs:
   build:
     runs-on: ubuntu-22.04
     steps:
-      - name: Install build dependencies
+      - name: Install base dependencies
         run: |
           sudo apt update
-          sudo apt install -y git clang lld zlib1g-dev
+          sudo apt install -y git clang lld make zlib1g-dev
+
+      - name: Checkout libfdt (official)
+        run: |
+          git clone https://git.kernel.org/pub/scm/utils/dtc/dtc.git
+          cd dtc
+          # 编译静态库 libfdt.a
+          make libfdt
+          # 安装头文件和静态库到系统目录（方便后续查找）
+          sudo make install PREFIX=/usr
+          # 确保静态库存在
+          ls -l /usr/lib/libfdt.a
 
       - name: Clone official libufdt
         run: |
           cd $HOME
           git clone https://android.googlesource.com/platform/system/libufdt
 
-      - name: Remove ACPI dependency from source (comment out libacpi.h includes)
+      - name: Remove ACPI dependency (comment out libacpi.h)
         run: |
           cd $HOME/libufdt/utils/src
           find . -name "*.c" -exec sed -i 's/#include "libacpi.h"/\/\/ &/g' {} \;
@@ -25,12 +36,14 @@ jobs:
       - name: Compile object files (clang)
         run: |
           cd $HOME/libufdt/utils/src
-          clang -c *.c -I../../include
+          # 添加 libfdt 头文件路径
+          clang -c *.c -I../../include -I/usr/include
 
-      - name: Link statically (lld)
+      - name: Link statically (lld) with libfdt
         run: |
           cd $HOME/libufdt/utils/src
-          clang -static -fuse-ld=lld -o mkdtimg *.o -lz -lm
+          # 链接静态 libfdt, z, m
+          clang -static -fuse-ld=lld -o mkdtimg *.o -lfdt -lz -lm
 
       - name: Verify binary
         run: |
