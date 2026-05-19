@@ -1,51 +1,46 @@
-name: Build mkdtimg (Full Static, Clang)
+name: Build mkdtimg (Full Static, No ACPI, Clang/LLD)
 
 on:
-  workflow_dispatch:
-  schedule:
-    - cron: '0 0 * * 0'
+  workflow_dispatch:          # 只允许手动触发
 
 jobs:
   build:
     runs-on: ubuntu-22.04
     steps:
       - name: Install build dependencies
-        run: sudo apt update && sudo apt install -y git make libz-dev
-
-      - name: Clone libacpi (official)
         run: |
-          cd $HOME
-          git clone https://android.googlesource.com/platform/system/libacpi
-          cd libacpi
-          # 1. 只编译 libacpi.a 静态库
-          make -f GNUmakefile libacpi.a
-          # 2. 生成静态库的索引
-          ranlib libacpi.a
+          sudo apt update
+          sudo apt install -y git clang lld libz-dev zlib1g-static
 
-      - name: Clone libufdt (official)
+      - name: Clone official libufdt
         run: |
           cd $HOME
           git clone https://android.googlesource.com/platform/system/libufdt
 
-      - name: Build mkdtimg (full static)
+      - name: Remove ACPI dependency from source (comment out libacpi.h includes)
         run: |
           cd $HOME/libufdt/utils/src
-          # 3. 编译所有源文件
-          clang -c *.c -I../../include -I$HOME/libacpi/include
-          # 4. 使用 lld 链接器进行静态链接
-          clang -static -fuse-ld=lld -o mkdtimg *.o \
-            -L$HOME/libacpi -lacpi \
-            -lz -lm
+          find . -name "*.c" -exec sed -i 's/#include "libacpi.h"/\/\/ &/g' {} \;
+
+      - name: Compile object files (clang)
+        run: |
+          cd $HOME/libufdt/utils/src
+          clang -c *.c -I../../include
+
+      - name: Link statically (lld)
+        run: |
+          cd $HOME/libufdt/utils/src
+          clang -static -fuse-ld=lld -o mkdtimg *.o -lz -lm
 
       - name: Verify binary
         run: |
           cd $HOME/libufdt/utils/src
           file mkdtimg
-          ldd mkdtimg || echo "Statically linked (no dynamic deps)"
+          ldd mkdtimg || echo "Statically linked (no dynamic dependencies)"
           ./mkdtimg help
-      
+
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
-          name: mkdtimg-static-clang
-          path: ${{ github.workspace }}/../libufdt/utils/src/mkdtimg
+          name: mkdtimg-static-noacpi
+          path: $HOME/libufdt/utils/src/mkdtimg
