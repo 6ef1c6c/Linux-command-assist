@@ -1,0 +1,51 @@
+name: Build mkdtimg (Full Static, Clang)
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '0 0 * * 0'
+
+jobs:
+  build:
+    runs-on: ubuntu-22.04
+    steps:
+      - name: Install build dependencies
+        run: sudo apt update && sudo apt install -y git make libz-dev
+
+      - name: Clone libacpi (official)
+        run: |
+          cd $HOME
+          git clone https://android.googlesource.com/platform/system/libacpi
+          cd libacpi
+          # 1. 只编译 libacpi.a 静态库
+          make -f GNUmakefile libacpi.a
+          # 2. 生成静态库的索引
+          ranlib libacpi.a
+
+      - name: Clone libufdt (official)
+        run: |
+          cd $HOME
+          git clone https://android.googlesource.com/platform/system/libufdt
+
+      - name: Build mkdtimg (full static)
+        run: |
+          cd $HOME/libufdt/utils/src
+          # 3. 编译所有源文件
+          clang -c *.c -I../../include -I$HOME/libacpi/include
+          # 4. 使用 lld 链接器进行静态链接
+          clang -static -fuse-ld=lld -o mkdtimg *.o \
+            -L$HOME/libacpi -lacpi \
+            -lz -lm
+
+      - name: Verify binary
+        run: |
+          cd $HOME/libufdt/utils/src
+          file mkdtimg
+          ldd mkdtimg || echo "Statically linked (no dynamic deps)"
+          ./mkdtimg help
+      
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: mkdtimg-static-clang
+          path: ${{ github.workspace }}/../libufdt/utils/src/mkdtimg
