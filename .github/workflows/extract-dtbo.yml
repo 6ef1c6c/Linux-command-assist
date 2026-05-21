@@ -1,10 +1,7 @@
 name: Extract Device Tree from dtbo.img
 
 on:
-  workflow_dispatch:
-  push:
-    paths:
-      - 'dtbo.img'               # 当推送 dtbo.img 时自动运行（可选）
+  workflow_dispatch:                # 手动触发（在 Actions 页面点击按钮运行）
 
 jobs:
   extract-dtbo:
@@ -22,7 +19,6 @@ jobs:
         run: |
           git clone https://android.googlesource.com/platform/system/libufdt
           cd libufdt/utils/src
-          # 编译所有 .c 文件并链接 zlib
           gcc -o mkdtimg *.c -I../../include -lz
           sudo cp mkdtimg /usr/local/bin/
           cd ../../..
