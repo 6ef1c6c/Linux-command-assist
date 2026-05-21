@@ -13,18 +13,18 @@ jobs:
       - name: Install dependencies
         run: |
           sudo apt update
-          sudo apt install -y device-tree-compiler git zlib1g-dev libfdt-dev
+          sudo apt install -y git gcc make zlib1g-dev
 
-      - name: Build mkdtimg from AOSP source
+      - name: Build mkdtimg from affggh/mkdtimg
         run: |
-          git clone https://android.googlesource.com/platform/system/libufdt
-          cd libufdt/utils/src
-          # 注释掉不需要的 libacpi.h 引用
-          sed -i 's/#include "libacpi.h"/\/\/ &/' *.c
-          # 编译所有 .c 文件，链接 zlib 和 libfdt
-          gcc -o mkdtimg *.c -I../../include -lz -lfdt
+          git clone https://github.com/affggh/mkdtimg.git
+          cd mkdtimg
+          # 修改 Makefile 以静态链接 zlib（可选，但能避免运行时依赖）
+          sed -i 's/^CC = gcc/CC = gcc\nLDFLAGS = -static/' Makefile
+          sed -i 's/$(CC) $(CFLAGS) -o $@ $(OBJS)/$(CC) $(CFLAGS) $(LDFLAGS) -o $@ $(OBJS) -lz/' Makefile
+          make
           sudo cp mkdtimg /usr/local/bin/
-          cd ../../..
+          cd ..
 
       - name: Extract DTB files from dtbo.img
         run: |
