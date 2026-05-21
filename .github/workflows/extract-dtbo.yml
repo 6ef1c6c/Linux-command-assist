@@ -1,0 +1,52 @@
+name: Extract Device Tree from dtbo.img
+
+on:
+  workflow_dispatch:        # 手动触发
+  push:
+    paths:
+      - 'dtbo.img'          # 当仓库中有 dtbo.img 文件更新时触发（可选）
+
+jobs:
+  extract-dtbo:
+    runs-on: ubuntu-22.04
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install dependencies
+        run: |
+          sudo apt update
+          sudo apt install -y device-tree-compiler git
+
+      - name: Build mkdtimg from AOSP source
+        run: |
+          git clone https://android.googlesource.com/platform/system/libufdt
+          cd libufdt/utils/src
+          gcc -o mkdtimg mkdtimg.c -I../../include -lz
+          sudo cp mkdtimg /usr/local/bin/
+          cd ../../..
+
+      - name: Extract DTB files from dtbo.img
+        run: |
+          mkdir -p dtb_out
+          mkdtimg dump dtbo.img -b dtb_out/
+
+      - name: Decompile DTB to DTS
+        run: |
+          mkdir -p dts_out
+          for dtb in dtb_out/*; do
+            base=$(basename "$dtb")
+            dtc -I dtb -O dts "$dtb" -o "dts_out/${base}.dts"
+          done
+
+      - name: List extracted DTS files
+        run: |
+          ls -la dts_out/
+          echo "---- First DTS content preview (if any) ----"
+          head -100 dts_out/*.dts 2>/dev/null || echo "No DTS files generated"
+
+      - name: Upload DTS files as artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: extracted-device-trees
+          path: dts_out/*.dts
