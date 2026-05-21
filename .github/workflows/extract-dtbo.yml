@@ -13,13 +13,14 @@ jobs:
       - name: Install dependencies
         run: |
           sudo apt update
-          sudo apt install -y git gcc make zlib1g-dev
+          sudo apt install -y git gcc make zlib1g-dev device-tree-compiler
+          # 验证 dtc 是否安装成功
+          dtc --version
 
       - name: Build mkdtimg from affggh/mkdtimg
         run: |
           git clone https://github.com/affggh/mkdtimg.git
           cd mkdtimg
-          # 将 Makefile 中的 llvm-strip 替换为 strip
           sed -i 's/llvm-strip/strip/g' Makefile
           make
           sudo cp mkdtimg /usr/local/bin/
