@@ -13,11 +13,9 @@ jobs:
       - name: Install dependencies
         run: |
           sudo apt update
-          sudo apt install -y git gcc make zlib1g-dev device-tree-compiler
-          # 验证 dtc 是否安装成功
-          dtc --version
+          sudo apt install -y device-tree-compiler git gcc make zlib1g-dev
 
-      - name: Build mkdtimg from affggh/mkdtimg
+      - name: Build mkdtimg (fallback tool)
         run: |
           git clone https://github.com/affggh/mkdtimg.git
           cd mkdtimg
@@ -26,12 +24,26 @@ jobs:
           sudo cp mkdtimg /usr/local/bin/
           cd ..
 
-      - name: Extract DTB files from dtbo.img
+      - name: Verify dtbo.img exists
+        run: |
+          ls -la
+          test -f dtbo.img || (echo "ERROR: dtbo.img not found" && exit 1)
+
+      - name: Try to decompile dtbo.img directly with dtc
+        run: |
+          # 尝试直接反编译整个 dtbo.img 为 dts
+          dtc -I dtb -O dts dtbo.img -o extracted.dts 2>/dev/null && echo "DTC_SUCCESS=true" >> $GITHUB_ENV || echo "DTC_SUCCESS=false" >> $GITHUB_ENV
+
+      - name: Extract DTB files using mkdtimg (if direct decompile failed)
+        if: env.DTC_SUCCESS == 'false'
         run: |
           mkdir -p dtb_out
           mkdtimg dump dtbo.img -b dtb_out/
+          echo "DTB files extracted:"
+          ls -la dtb_out/
 
-      - name: Decompile DTB to DTS
+      - name: Decompile DTB to DTS (if multiple)
+        if: env.DTC_SUCCESS == 'false'
         run: |
           mkdir -p dts_out
           for dtb in dtb_out/*; do
@@ -39,14 +51,20 @@ jobs:
             dtc -I dtb -O dts "$dtb" -o "dts_out/${base}.dts"
           done
 
-      - name: List extracted DTS files
+      - name: Collect DTS files (single or multiple)
         run: |
-          ls -la dts_out/
-          echo "---- First DTS content preview (if any) ----"
-          head -100 dts_out/*.dts 2>/dev/null || echo "No DTS files generated"
+          mkdir -p final_dts
+          if [ -f extracted.dts ]; then
+            cp extracted.dts final_dts/
+          elif [ -d dts_out ]; then
+            cp dts_out/*.dts final_dts/
+          else
+            echo "No DTS files generated"
+            exit 1
+          fi
 
-      - name: Upload DTS files as artifacts
+      - name: Upload DTS files
         uses: actions/upload-artifact@v4
         with:
           name: extracted-device-trees
-          path: dts_out/*.dts
+          path: final_dts/*.dts
