@@ -1,7 +1,7 @@
 name: Extract Device Tree from dtbo.img
 
 on:
-  workflow_dispatch:                # 手动触发
+  workflow_dispatch:
 
 jobs:
   extract-dtbo:
@@ -19,9 +19,8 @@ jobs:
         run: |
           git clone https://github.com/affggh/mkdtimg.git
           cd mkdtimg
-          # 修改 Makefile 以静态链接 zlib（可选，但能避免运行时依赖）
-          sed -i 's/^CC = gcc/CC = gcc\nLDFLAGS = -static/' Makefile
-          sed -i 's/$(CC) $(CFLAGS) -o $@ $(OBJS)/$(CC) $(CFLAGS) $(LDFLAGS) -o $@ $(OBJS) -lz/' Makefile
+          # 将 Makefile 中的 llvm-strip 替换为 strip
+          sed -i 's/llvm-strip/strip/g' Makefile
           make
           sudo cp mkdtimg /usr/local/bin/
           cd ..
