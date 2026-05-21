@@ -1,10 +1,10 @@
 name: Extract Device Tree from dtbo.img
 
 on:
-  workflow_dispatch:        # 手动触发
+  workflow_dispatch:
   push:
     paths:
-      - 'dtbo.img'          # 当仓库中有 dtbo.img 文件更新时触发（可选）
+      - 'dtbo.img'               # 当推送 dtbo.img 时自动运行（可选）
 
 jobs:
   extract-dtbo:
@@ -16,13 +16,14 @@ jobs:
       - name: Install dependencies
         run: |
           sudo apt update
-          sudo apt install -y device-tree-compiler git
+          sudo apt install -y device-tree-compiler git zlib1g-dev
 
       - name: Build mkdtimg from AOSP source
         run: |
           git clone https://android.googlesource.com/platform/system/libufdt
           cd libufdt/utils/src
-          gcc -o mkdtimg mkdtimg.c -I../../include -lz
+          # 编译所有 .c 文件并链接 zlib
+          gcc -o mkdtimg *.c -I../../include -lz
           sudo cp mkdtimg /usr/local/bin/
           cd ../../..
 
