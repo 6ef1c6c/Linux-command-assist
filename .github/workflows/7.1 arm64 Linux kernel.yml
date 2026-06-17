@@ -44,7 +44,7 @@ jobs:
           yes '' | make olddefconfig
           
           # 编译内核镜像和设备树
-          make -j$(nproc) Image dtbs
+          make -j$(nproc) Image
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
@@ -52,4 +52,4 @@ jobs:
           name: kernel-arm64
           path: |
             linux/arch/arm64/boot/Image
-            linux/arch/arm64/boot/dts/
+            
