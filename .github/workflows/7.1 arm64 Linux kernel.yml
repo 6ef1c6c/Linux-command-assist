@@ -2,6 +2,11 @@ name: Build ARM64 Linux Kernel
 
 on:
   workflow_dispatch:
+    inputs:
+      kernel_url:
+        description: 'Kernel source tarball URL'
+        required: true
+        default: 'https://cdn.kernel.org/pub/linux/kernel/v7.x/linux-7.1.tar.xz'
 
 jobs:
   build-kernel:
@@ -20,13 +25,13 @@ jobs:
             bc cpio \
             wget xz-utils \
             git \
-            gcc-aarch64-linux-gnu  # 必须安装 ARM64 交叉编译器
+            gcc-aarch64-linux-gnu
 
       - name: Download kernel source
         run: |
-          wget https://cdn.kernel.org/pub/linux/kernel/v7.x/linux-7.1.tar.xz
-          tar -xvf linux-7.1.tar.xz
-          mv linux-7.1 linux
+          wget -O kernel.tar.xz ${{ github.event.inputs.kernel_url }}
+          tar -xvf kernel.tar.xz
+          mv linux-* linux
 
       - name: Copy kernel config
         run: |
@@ -35,15 +40,9 @@ jobs:
       - name: Build kernel (Image & dtbs)
         run: |
           cd linux
-          
-          # 【关键】在执行任何 make 前，先声明环境变量
           export ARCH=arm64
           export CROSS_COMPILE=aarch64-linux-gnu-
-          
-          # 处理旧配置文件（此时已应用上述环境变量）
           yes '' | make olddefconfig
-          
-          # 编译内核镜像和设备树
           make -j$(nproc) Image
 
       - name: Upload artifacts
@@ -52,4 +51,3 @@ jobs:
           name: kernel-arm64
           path: |
             linux/arch/arm64/boot/Image
-            
