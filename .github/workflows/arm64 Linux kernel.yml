@@ -37,7 +37,7 @@ jobs:
         run: |
           cp ${{ github.workspace }}/.config linux/.config
 
-      - name: Build kernel (Image & dtbs)
+      - name: Build kernel
         run: |
           cd linux
           export ARCH=arm64
