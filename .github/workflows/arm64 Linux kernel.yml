@@ -6,7 +6,7 @@ on:
       kernel_url:
         description: 'Kernel source tarball URL'
         required: true
-        default: 'https://cdn.kernel.org/pub/linux/kernel/v7.x/linux-7.1.tar.xz'
+        default: ''
 
 jobs:
   build-kernel:
